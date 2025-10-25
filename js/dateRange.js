@@ -14,11 +14,10 @@ function setupDateInputs(startInput, endInput) {
   endInput.min = earliestDate;
   endInput.max = today;
 
-  // Default: Show the most recent 9 days of space images
-  const lastWeek = new Date();
-  lastWeek.setDate(lastWeek.getDate() - 8); // minus 8 because it includes today
-  startInput.value = lastWeek.toISOString().split('T')[0];
-  endInput.value = today;
+  // Default: Show dates that exist in the backup data (Sep 18 - Oct 1, 2025)
+  // This covers the 9 images available during the government shutdown
+  startInput.value = '2025-09-18';
+  endInput.value = '2025-10-01';
 
   // Automatically adjust end date to show exactly 9 days of images
   startInput.addEventListener('change', () => {

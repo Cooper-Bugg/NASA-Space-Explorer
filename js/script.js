@@ -8,14 +8,24 @@ const fetchBtn = document.querySelector('.filters button');
 // 2) Prepare date pickers (provided helper in dateRange.js)
 setupDateInputs(startInput, endInput);
 
-// 3) Your NASA API key
-// Use 'DEMO_KEY' for classroom use, or replace with your own free key.
-const API_KEY = 'Ln0ThpxAypmUbJZmvq6zA9dMx3JMlEtftDoz9wgz';
+// 3) Backup APOD data source (NASA API is currently down due to government shutdown)
+const APOD_DATA_URL = 'https://cdn.jsdelivr.net/gh/GCA-Classroom/apod/data.json';
 
-// 4) Build the APOD API URL for a date range
-function buildApodUrl(start, end) {
-  // thumbs=true asks NASA for a thumbnail when the media is a video
-  return `https://api.nasa.gov/planetary/apod?api_key=${API_KEY}&start_date=${start}&end_date=${end}&thumbs=true`;
+// 4) Filter APOD data by date range
+function filterApodData(allData, start, end) {
+  console.log(`Filtering ${allData.length} items between ${start} and ${end}`);
+  
+  // Compare date strings directly to avoid timezone issues
+  const filtered = allData.filter(item => {
+    const isInRange = item.date >= start && item.date <= end;
+    if (isInRange) {
+      console.log(`Match found: ${item.date}`);
+    }
+    return isInRange;
+  });
+  
+  console.log(`Filtered to ${filtered.length} items`);
+  return filtered;
 }
 
 // 5) Render helper: create one gallery card
@@ -25,18 +35,36 @@ function createCard(item) {
     ? (item.thumbnail_url || '')
     : item.url;
 
+  // Format date as m/d/y
+  const formattedDate = formatDate(item.date);
+
+  // Create explanation tooltip
+  const explanation = item.explanation || 'No explanation available';
+
   // Basic fallback when an image is not available
   const imageHtml = imgSrc
-    ? `<img src="${imgSrc}" alt="${item.title}">`
+    ? `<div class="image-container">
+         <img src="${imgSrc}" alt="${item.title}">
+       </div>`
     : `<div class="placeholder" style="padding:20px">No preview available</div>`;
 
   return `
     <div class="gallery-item">
+      <div class="tooltip">${explanation}</div>
       ${imageHtml}
       <p style="font-weight:bold; font-size:18px; margin-top:10px;">${item.title}</p>
-      <p style="color:#555;">${item.date}</p>
+      <p style="color:#555;">${formattedDate}</p>
     </div>
   `;
+}
+
+// Helper function to format date as m/d/y
+function formatDate(dateString) {
+  const date = new Date(dateString + 'T00:00:00'); // Add time to avoid timezone issues
+  const month = date.getMonth() + 1; // getMonth() is 0-indexed
+  const day = date.getDate();
+  const year = date.getFullYear();
+  return `${month}/${day}/${year}`;
 }
 
 // 6) Render the whole gallery
@@ -80,21 +108,23 @@ async function fetchImages() {
   // Basic guard against empty inputs
   if (!start || !end) return;
 
+  console.log(`Fetching images for range: ${start} to ${end}`);
   showLoading();
   fetchBtn.disabled = true;
 
   try {
-    const url = buildApodUrl(start, end);
-    const res = await fetch(url);
+    const res = await fetch(APOD_DATA_URL);
     if (!res.ok) {
       throw new Error(`Request failed: ${res.status} ${res.statusText}`);
     }
-    const data = await res.json();
+    const allData = await res.json();
+    console.log(`Fetched ${allData.length} total items from backup source`);
 
-    // The API returns either an array or a single object.
-    const items = Array.isArray(data) ? data : [data];
+    // Filter the data by the selected date range
+    const items = filterApodData(allData, start, end);
     renderGallery(items);
   } catch (err) {
+    console.error('Error:', err);
     gallery.innerHTML = `
       <div class="placeholder">
         <div class="placeholder-icon">⚠️</div>
